@@ -16,14 +16,14 @@ public enum PortalNodeDir
     Right = 3
 }
 
-public class PortalNode : IComparable<PortalNode>, IEquatable<PortalNode>
+public class PortalNode :   IEquatable<PortalNode>
 {
     public int2 pos { get => midGrid.worldPos; }
     public Grid midGrid;
     public List<Grid> grids;
 
     public PortalNodeDir dir;
-    public int gcost, hcost, fcost;
+ 
 
 
     public bool Collinear(PortalNode other)
@@ -51,14 +51,7 @@ public class PortalNode : IComparable<PortalNode>, IEquatable<PortalNode>
 
     }
 
-    public int CompareTo(PortalNode other)
-    {
-        if (fcost == 0) return 1;
-        if (other.fcost == 0) return -1;
-
-        return fcost - other.fcost;
-
-    }
+ 
 
     public bool Equals(PortalNode other)
     {
@@ -77,7 +70,7 @@ public class PortalNode : IComparable<PortalNode>, IEquatable<PortalNode>
     {
         this.grids = grids;
         this.dir = StaticData.GetDir(d);
-        midGrid = grids[grids.Count / 2];
+        midGrid = grids[grids.Count  / 2];
     }
 
 

@@ -7,7 +7,8 @@ using Unity.Mathematics;
 public class Mono : MonoBehaviour
 {
     Cluster cluster0, cluster1;
-    
+    public int2 fromPos, endPos;
+
     void Start()
     {
         cluster0 = World.DefaultGameObjectInjectionWorld.GetExistingSystem<GridTest>().clusters[0];
@@ -25,17 +26,28 @@ public class Mono : MonoBehaviour
             if (Physics.Raycast(ray, out hitInfo))
             {
                 var pos = hitInfo.point;
-                var index = new int2((int)pos.x, (int)pos.z);
-                cluster0.TestHit(index);
+                fromPos = new int2((int)pos.x, (int)pos.z);
+                
+
+
+            }
+        }
+        if (Input.GetMouseButtonDown(1))
+        {
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            RaycastHit hitInfo;
+            if (Physics.Raycast(ray, out hitInfo))
+            {
+                var pos = hitInfo.point;
+                endPos = new int2((int)pos.x, (int)pos.z);
+                 
 
 
             }
         }
         if (Input.GetKeyDown(KeyCode.Space))
         {
-            cluster1.GeneratePortalNode();
-            cluster0.GeneratePortalNode();
-            cluster0.GenerateEdges();
+            PathFindUtil.FindPath(new int2(4,3), new int2(55,33));
         }
     }
     /// <summary>
@@ -66,9 +78,9 @@ public class Mono : MonoBehaviour
         {
             for (int j = i + 1; j < cluster0.portalNodes.Count; j++)
             {
-                var a = cluster0.portalNodes[i] ;
-                var b = cluster0.portalNodes[j] ;
-                if(a.Collinear(b)) continue;
+                var a = cluster0.portalNodes[i];
+                var b = cluster0.portalNodes[j];
+                if (a.Collinear(b)) continue;
 
 
                 Gizmos.DrawLine(new Vector3(a.pos.x, 0, a.pos.y), new Vector3(b.pos.x, 0, b.pos.y));

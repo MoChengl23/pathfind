@@ -22,11 +22,11 @@ public struct Grid : IComparable<Grid>, IEquatable<Grid>
 
         return fcost - other.fcost;
     }
-    public Grid(int2 bottomLeft, int2 pos, int v = int.MaxValue)
+    public Grid(int2 bottomLeft, int2 pos, int v = int.MaxValue, bool isWalkable = true)
     {
-        this.worldPos = pos + bottomLeft ;
+        this.worldPos = pos + bottomLeft;
         this.localPos = pos;
-        isWalkable = true;
+        this.isWalkable = isWalkable;
         camefrom = -1;
         gcost = v;
         hcost = 0;
@@ -34,6 +34,7 @@ public struct Grid : IComparable<Grid>, IEquatable<Grid>
 
 
     }
+
     public void Init(int2 pos)
     {
 
@@ -49,7 +50,7 @@ public struct Grid : IComparable<Grid>, IEquatable<Grid>
         var x2 = other.worldPos.x;
         var y1 = worldPos.y;
         var y2 = other.worldPos.y;
-        
+
 
 
         return (x1 == x2 && math.abs(y1 - y2) == 1)

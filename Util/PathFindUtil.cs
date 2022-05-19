@@ -23,6 +23,21 @@ public static class PathFindUtil
         }
         return false;
     }
+
+    public static List<Edge> FindPath(int2 fromPos, int2 endPos)
+    {
+        int jbnkji = 1;
+        GridSystem.GetClusterAndGrid(fromPos, out Cluster fromCluster, out Grid fromGrid);
+        var fromPortalNode = fromCluster.ConnectGridToBorderNode(fromGrid);
+
+        GridSystem.GetClusterAndGrid(endPos, out Cluster endCluster, out Grid endGrid);
+        var endPortalNode = endCluster.ConnectGridToBorderNode(endGrid);
+        var res = FindPath(fromPortalNode, endPortalNode, true);
+        int a = 1;
+        Debug.Log("length = " + res.Count);
+        return res;
+
+    }
     /// <summary>
     /// Final Path Find
     /// </summary>
@@ -45,8 +60,9 @@ public static class PathFindUtil
 
 
         var start = from;
+        visited.Add(start);
 
-        // heap.Push(start);
+
 
 
 
@@ -129,5 +145,5 @@ public static class PathFindUtil
 
     }
 
- 
+
 }

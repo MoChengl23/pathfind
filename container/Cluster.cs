@@ -219,6 +219,7 @@ public class Cluster
 
     public void GenerateEdges(bool needAdd = false)
     {
+        int ses = 1;
         //generate connect edge
         foreach (var (i, dir) in neighborClusters)
         {
@@ -263,23 +264,28 @@ public class Cluster
                 if (from.Collinear(end)) continue;
                 var doneEvent = new ManualResetEvent(false);
                 calculatePath.Add(doneEvent);
-                var edge = new Edge(from, end, doneEvent);
-                ThreadPool.QueueUserWorkItem(edge.BuildPath, new object[] { from.midGrid, end.midGrid, grids });
+                var edgeFrom2End = new Edge(from, end, doneEvent);
+
+
+                edgeFrom2End.BuildPath(new object[] { from.midGrid, end.midGrid, grids });
+
+
+                from.edges.Add(edgeFrom2End);
+
+
+                var edgeEnd2From = new Edge(end, from, doneEvent);
+                edgeEnd2From.path =  edgeFrom2End.path.ReverseNativeList();
+                end.edges.Add(edgeEnd2From);
+
+                // ThreadPool.QueueUserWorkItem(edge.BuildPath, new object[] { from.midGrid, end.midGrid, grids });
                 // edge.doneEvent.WaitOne();
-                int c = 1;
-
-                portalNodes[i].edges.Add(edge);
-
-                portalNodes[j].edges.Add(edge);
-                int b = 1;
-
 
             }
 
 
 
-        WaitHandle.WaitAll(calculatePath.ToArray());
-        int a = 1;
+        // WaitHandle.WaitAll(calculatePath.ToArray(), 10000);
+        int b = 1;
 
 
     }
@@ -288,7 +294,7 @@ public class Cluster
 
 
 
-    public void ConnectGridToBorderNode(Grid grid)
+    public PortalNode ConnectGridToBorderNode(Grid grid)
     {
 
 
@@ -299,14 +305,22 @@ public class Cluster
         {
             var doneEvent = new ManualResetEvent(false);
             doneEventList.Add(doneEvent);
-            var tempEdge = new Edge(node, tempPortalNode, doneEvent);
-            node.edges.Add(tempEdge);
-            ThreadPool.QueueUserWorkItem(tempEdge.BuildPath, new object[] { node.midGrid, grid, grids });
+            var EdgeToTempPortalNode = new Edge(node, tempPortalNode, doneEvent);
+            node.edges.Add(EdgeToTempPortalNode);
+            EdgeToTempPortalNode.BuildPath(new object[] { node.midGrid, grid, grids });
 
+
+            var EdgeToBorderNode = new Edge(tempPortalNode, node, doneEvent);
+            EdgeToBorderNode.path = EdgeToTempPortalNode.path.ReverseNativeList();
+            tempPortalNode.edges.Add(EdgeToBorderNode);
+
+            // ThreadPool.QueueUserWorkItem(tempEdge.BuildPath, new object[] { node.midGrid, grid, grids });
+            // doneEvent.WaitOne();
 
 
         }
-        WaitHandle.WaitAll(doneEventList.ToArray());
+        // WaitHandle.WaitAll(doneEventList.ToArray());
+        return tempPortalNode;
 
     }
 

@@ -119,7 +119,7 @@ public class Edge : IEquatable<Edge>
         NativeArray<Grid> grids = (NativeArray<Grid>)os[2];
 
         NativeArray<Grid> tempGrids = new NativeArray<Grid>(grids, Allocator.Persistent);
-
+     
         path = FindPath(tempGrids, fromGrid, endGrid);
 
         doneEvent.Set();
@@ -136,38 +136,40 @@ public class Edge : IEquatable<Edge>
         heap.Push(start);
 
         NativeHashSet<int2> visited = new NativeHashSet<int2>(StaticData.ClusterWidth * StaticData.ClusterWidth, Allocator.Persistent);
-
+        visited.Add(from.worldPos);
         while (!heap.IsEmpty)
         {
             var front = heap.Pop();
+   
 
             if (front.Equals(end))
                 break;
             visited.Add(front.worldPos);
             // NativeList<int2> neighbors = new NativeList<int2>(Allocator.Temp);
-            NativeList<Grid> neighbors = tempGrids.GetNeighbors(front.worldPos, StaticData.ClusterWidth);
-
+            NativeList<Grid> neighbors = tempGrids.GetNeighbors(front.localPos, StaticData.ClusterWidth);
+            int a = 1;
             for (int i = 0; i < neighbors.Length; i++)
-
             {
-                int2 neighborIndex = neighbors[i].worldPos;
+                int2 neighborLocalPos = neighbors[i].localPos;
+                int2 neighborWorldPos = neighbors[i].worldPos;
+                int aa = 2;
                 // var temp = tempGrids.GetItem(neighborIndex);
                 // var temp2 = visited.Contains(neighborIndex);
 
-                if (visited.Contains(neighborIndex) || !tempGrids.GetItem(neighborIndex, ClusterWidth).isWalkable)
+                if (visited.Contains(neighborWorldPos) || !tempGrids.GetItem(neighborLocalPos, ClusterWidth).isWalkable)
                     continue;
 
-                var neighborGrid = tempGrids.GetItem(neighborIndex, ClusterWidth);
+                var neighborGrid = tempGrids.GetItem(neighborLocalPos, ClusterWidth);
 
-                int tempGCost = front.gcost + CalculateDistanceCost(front.worldPos, neighborIndex);
+                int tempGCost = front.gcost + CalculateDistanceCost(front.worldPos, neighborWorldPos);
                 if (tempGCost < neighborGrid.gcost)
                 {
                     neighborGrid.camefrom = front.localPos;
                     neighborGrid.gcost = tempGCost;
-                    neighborGrid.hcost = CalculateDistanceCost(neighborIndex, end.worldPos);
+                    neighborGrid.hcost = CalculateDistanceCost(neighborWorldPos, end.worldPos);
                     neighborGrid.fcost = neighborGrid.gcost + neighborGrid.hcost;
 
-                    tempGrids.SetItem(neighborIndex, neighborGrid);
+                    tempGrids.SetItem(neighborLocalPos, neighborGrid);
                     if (!heap.Contains(neighborGrid))
                     {
                         heap.Push(neighborGrid);

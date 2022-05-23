@@ -10,9 +10,11 @@ using UnityEngine;
 using Unity.Entities;
 using Unity.Burst;
 using Unity.Mathematics;
+using Unity.Collections.LowLevel.Unsafe;
 using System;
-using Object = System.Object;
+ 
 using Unity.Jobs;
+using Unity.Profiling;
 
 public struct EdgeTemp : IEquatable<EdgeTemp>
 {
@@ -52,7 +54,7 @@ public class Edge : IEquatable<Edge>
 
 
     public NativeList<int2> path;
-    public ManualResetEvent doneEvent;
+
     // public static int StaticData.ClusterWidth = StaticData.ClusterWidth;
 
     public bool done;
@@ -61,20 +63,7 @@ public class Edge : IEquatable<Edge>
 
     public int weight;
 
-    /// <summary>
-    /// for connect internal portalnode
-    /// </summary>
-    /// <param name="fromNode"></param>
-    /// <param name="endNode"></param>
-    /// <param name="d"></param>
-    public Edge(PortalNode fromNode, PortalNode endNode, ManualResetEvent d)
-    {
-        this.fromNode = fromNode;
-        this.endNode = endNode;
-        doneEvent = d;
-        doneEvent.Reset();
 
-    }
     /// <summary>
     /// only for connect cluster Border
     /// </summary>
@@ -95,13 +84,6 @@ public class Edge : IEquatable<Edge>
     }
 
 
-
-
-    /// <summary>
-    /// for connect temp PortalNode to cluster borderNode
-    /// </summary>
-    /// <param name="from"></param>
-    /// <param name="end"></param>
     public Edge(PortalNode from, PortalNode end)
     {
         this.fromNode = from;
@@ -109,31 +91,60 @@ public class Edge : IEquatable<Edge>
     }
 
 
+    /// <summary>
+    /// 无参数的构造函数，用于对象池的泛型构造
+    /// </summary>
+    public Edge(){
+
+    }
+
+    public void Init(PortalNode fromNode, PortalNode endNode, int weight, Grid outputGrid, Grid inputGrid)
+    {
+        this.fromNode = fromNode;
+        this.endNode = endNode;
+        this.weight = weight;
+        this.fromGrid = outputGrid;
+        this.endGrid = inputGrid;
+    }
+    public void Init(PortalNode from, PortalNode end)
+    {
+        this.fromNode = from;
+        this.endNode = end;
+    }
+    public void Init(){
+
+    }
+
+
+
     public override int GetHashCode()
     {
         return from.clusterIndexFlatten() * StaticData.HowManyGridsInACluster + end.clusterIndexFlatten();
 
     }
-    // public void BuildPath(Object o)
-    // {
-    //     object[] os = o as object[];
+    public void ReleaseMemory()
+    {
+        if (path.IsCreated)
+        {
+            NativeAllocatePool.GiveBackToPool(path, Allocator.TempJob);
+        }
+    }
 
-    //     Grid fromGrid = (Grid)os[0];
-    //     Grid endGrid = (Grid)os[1];
-    //     NativeArray<Grid> grids = (NativeArray<Grid>)os[2];
-
-    //     NativeArray<Grid> tempGrids = new NativeArray<Grid>(grids, Allocator.Temp);
-
-    //     path = FindPath(tempGrids, fromGrid, endGrid);
-
-    //     doneEvent.Set();
-
-    // }
-    public  JobHandle  BuildPath(Grid fromGrid, Grid endGrid, NativeArray<Grid> grids)
+    public JobHandle BuildPath(Grid fromGrid, Grid endGrid, NativeArray<Grid> grids)
     {
 
-
-        path = new NativeList<int2>(Allocator.TempJob);
+        var c = new ProfilerMarker("Allocate");
+        // var d = new ProfilerMarker();
+        c.Begin();
+        // path = NativeAllocatePool.PullNativeList<int2>(Allocator.TempJob);
+        if (path.IsCreated)
+        {
+            Debug.Log("already exist path");
+            NativeAllocatePool.GiveBackToPool(path, Allocator.TempJob);
+        }
+        // path = new NativeList<int2>(Allocator.TempJob);
+        path = NativeAllocatePool.PullNativeList<int2>(Allocator.TempJob);
+        c.End();
 
 
         JobHandle jobHandle = new FindPathJob
@@ -151,6 +162,7 @@ public class Edge : IEquatable<Edge>
     struct FindPathJob : IJob
     {
         public Grid fromGrid;
+        
         public Grid endGrid;
         public NativeList<int2> path;
 
@@ -261,5 +273,7 @@ public class Edge : IEquatable<Edge>
         return (fromNode == other.fromNode && endNode == other.endNode)
          || (fromNode == other.endNode && endNode == other.fromNode);
     }
+
+
 }
 

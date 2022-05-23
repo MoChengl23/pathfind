@@ -50,6 +50,7 @@ public class PortalNode :   IEquatable<PortalNode>
         return false;
 
     }
+    
 
  
 
@@ -82,6 +83,11 @@ public class PortalNode :   IEquatable<PortalNode>
     public PortalNode(Grid grid)
     {
         midGrid = grid;
+
+    }
+        public PortalNode( )
+    {
+        
 
     }
 

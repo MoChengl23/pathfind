@@ -1,3 +1,4 @@
+using System.Data;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Collections;
@@ -6,6 +7,7 @@ using Unity.Jobs;
 using Unity.Mathematics;
 using System;
 using System.Linq;
+using UnityEngine.Profiling;
 
 public static class PathFindUtil
 {
@@ -26,14 +28,20 @@ public static class PathFindUtil
 
     public static List<Edge> FindPath(int2 fromPos, int2 endPos)
     {
-        int jbnkji = 1;
+        Profiler.BeginSample("GetClusterAndGrid");
         GridSystem.GetClusterAndGrid(fromPos, out Cluster fromCluster, out Grid fromGrid);
+        Profiler.EndSample();
+        Profiler.BeginSample("(Connection");
         var fromPortalNode = fromCluster.ConnectGridToBorderNode(fromGrid);
+        Profiler.EndSample();
 
         GridSystem.GetClusterAndGrid(endPos, out Cluster endCluster, out Grid endGrid);
         var endPortalNode = endCluster.ConnectGridToBorderNode(endGrid);
+        
+        Profiler.BeginSample("FindPathPortalNode");
         var res = FindPath(fromPortalNode, endPortalNode, true);
-        int a = 1;
+        Profiler.EndSample();
+     
         Debug.Log("length = " + res.Count);
         return res;
 

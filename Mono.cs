@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Entities;
+using UnityEngine.Profiling;
 using Unity.Mathematics;
 
 public class Mono : MonoBehaviour
@@ -47,7 +48,11 @@ public class Mono : MonoBehaviour
         }
         if (Input.GetKeyDown(KeyCode.Space))
         {
+            NativeAllocatePool<int2>.Init();
+            AllocatePool<Edge>.Init();
+            Profiler.BeginSample("mytime");
             PathFindUtil.FindPath(new int2(4,3), new int2(55,33));
+            Profiler.EndSample();
         }
     }
     /// <summary>

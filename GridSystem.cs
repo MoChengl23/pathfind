@@ -70,10 +70,10 @@ public static class GridSystem
         int grid_x = pos.x % StaticData.ClusterWidth;
         int grid_y = pos.y % StaticData.ClusterWidth;
 
-        Debug.Log(1);
+     
         cluster = clusters.GetItem(new int2(cluster_x, cluster_y), StaticData.ClusterCount);
         grid = cluster.grids.GetItem(new int2(grid_x, grid_y), StaticData.ClusterWidth);
- Debug.Log(1);
+ 
 
 
     }

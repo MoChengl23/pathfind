@@ -121,6 +121,7 @@ public partial class Tes : SystemBase
     List<Testclass> ts = new List<Testclass>();
     ClassHeap<Testclass> classHeap = new ClassHeap<Testclass>();
     NativeList<int> teee = new NativeList<int>(Allocator.TempJob);
+    List<NativeList<int>> llll = new List<NativeList<int>>();
 
 
 
@@ -146,24 +147,38 @@ public partial class Tes : SystemBase
 
         if (Input.GetKeyDown(KeyCode.F1))
         {
-            new testJob { temp = teee }.Schedule().Complete();
+            NativeList<int> a = NativeAllocatePool.PullNativeList<int>(Allocator.Persistent);
 
+            a.Add(1);
+            
+            a.Add(1);
+            
+            a.Add(1);
+            
+            a.Add(1);
+            
+            a.Add(1);
 
+            Debug.Log(a.Length);
+            llll.Add(a);
+
+            NativeAllocatePool<int>.DisPlay();
+            Profiler.BeginSample("myAll");
+            var aa = new NativeList<int2>(Allocator.TempJob);
+            Profiler.EndSample();
+            var teesafd = AllocatePool.PullItem<Edge>();
+            teesafd.Init(new PortalNode(), new PortalNode());
 
         }
         if (Input.GetKeyDown(KeyCode.F2))
         {
 
-            var s = string.Empty;
-            for (int i = 0; i < teee.Length;i++){
-                s += teee[i].ToString();
-                s += " ";
-            }
-            Debug.Log(s);
+            NativeAllocatePool.GiveBackToPool(llll[0], Allocator.Persistent);
+            llll.RemoveAt(0);
         }
         if (Input.GetKeyDown(KeyCode.F3))
         {
-            classHeap.Pop();
+           NativeAllocatePool<int>.DisPlay();
 
         }
     }

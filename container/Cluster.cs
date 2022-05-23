@@ -11,6 +11,10 @@ using Unity.Jobs;
 using Unity.Burst;
 using System.Linq;
 using Object = System.Object;
+using UnityEngine.Profiling;
+using Unity.Profiling.LowLevel.Unsafe;
+using Unity.Profiling;
+
 public enum ClusterDir
 {
     Top = 2,
@@ -219,7 +223,7 @@ public class Cluster
 
     public void GenerateEdges(bool needAdd = false)
     {
-        int ses = 1;
+
         //generate connect edge
         foreach (var (i, dir) in neighborClusters)
         {
@@ -234,11 +238,17 @@ public class Cluster
                     && kk.Near(jj, out Grid outputGrid, out Grid inputGrid))
                     {
 
-                        // portalNodes.Add(jj);
-                        portalNodes[k].edges.Add(new Edge(kk, jj, 10, outputGrid, inputGrid));
+                        var edge = AllocatePool.PullItem<Edge>();
+                        edge.Init(kk, jj, 10, outputGrid, inputGrid);
+                        portalNodes[k].edges.Add(edge);
 
                         if (needAdd)
-                            i.portalNodes[j].edges.Add(new Edge(jj, kk, 10, inputGrid, outputGrid));
+                        {
+                            var edge2 = AllocatePool.PullItem<Edge>();
+                            edge2.Init(jj, kk, 10, inputGrid, outputGrid);
+                            i.portalNodes[j].edges.Add(edge2);
+                        }
+                        // i.portalNodes[j].edges.Add(new Edge(jj, kk, 10, inputGrid, outputGrid));
 
 
                     }
@@ -247,8 +257,8 @@ public class Cluster
 
 
         }
-        var ttt = portalNodes;
-        Debug.Log(ttt.Count);
+
+
 
 
 
@@ -262,11 +272,13 @@ public class Cluster
                 var from = portalNodes[i];
                 var end = portalNodes[j];
                 if (from.Collinear(end)) continue;
-                var doneEvent = new ManualResetEvent(false);
-                calculatePath.Add(doneEvent);
-                var edgeFrom2End = new Edge(from, end, doneEvent);
 
-                var  jobHandle  = edgeFrom2End.BuildPath(from.midGrid, end.midGrid, grids);
+
+                // var edgeFrom2End = new Edge(from, end);
+                var edgeFrom2End = AllocatePool.PullItem<Edge>();
+                edgeFrom2End.Init(from, end);
+
+                var jobHandle = edgeFrom2End.BuildPath(from.midGrid, end.midGrid, grids);
                 jobHandle.Complete();
 
                 // edgeFrom2End.BuildPath(new object[] { from.midGrid, end.midGrid, grids });
@@ -275,8 +287,11 @@ public class Cluster
                 from.edges.Add(edgeFrom2End);
 
 
-                var edgeEnd2From = new Edge(end, from, doneEvent);
-                edgeEnd2From.path =  edgeFrom2End.path.ReverseNativeList();
+                // var edgeEnd2From = new Edge(end, from);
+                var edgeEnd2From = AllocatePool.PullItem<Edge>();
+                edgeEnd2From.Init(end, from);
+
+                edgeEnd2From.path = edgeFrom2End.path.ReverseNativeList();
                 end.edges.Add(edgeEnd2From);
 
                 // ThreadPool.QueueUserWorkItem(edge.BuildPath, new object[] { from.midGrid, end.midGrid, grids });
@@ -287,7 +302,7 @@ public class Cluster
 
 
         // WaitHandle.WaitAll(calculatePath.ToArray(), 10000);
-        int b = 1;
+
 
 
     }
@@ -299,30 +314,51 @@ public class Cluster
     public PortalNode ConnectGridToBorderNode(Grid grid)
     {
 
+        var a = new ProfilerMarker("A");
+        var b = new ProfilerMarker("B");
 
         PortalNode tempPortalNode = new PortalNode(grid);
-        List<ManualResetEvent> doneEventList = new List<ManualResetEvent>();
 
+        NativeList<JobHandle> jobHandles = new NativeList<JobHandle>(Allocator.Temp);
+        List<Edge> edges = new List<Edge>();
+        a.Begin();
         foreach (var node in portalNodes)
         {
-            var doneEvent = new ManualResetEvent(false);
-            doneEventList.Add(doneEvent);
-            var EdgeToTempPortalNode = new Edge(node, tempPortalNode, doneEvent);
+
+
+            // var EdgeToTempPortalNode = new Edge(node, tempPortalNode);
+            var EdgeToTempPortalNode = AllocatePool.PullItem<Edge>();
+            EdgeToTempPortalNode.Init(node, tempPortalNode);
+
             node.edges.Add(EdgeToTempPortalNode);
+            b.Begin();
             var jobHandle = EdgeToTempPortalNode.BuildPath(node.midGrid, grid, grids);
             // EdgeToTempPortalNode.BuildPath(new object[] { node.midGrid, grid, grids });
-            jobHandle.Complete();
+            b.End();
 
-
-            var EdgeToBorderNode = new Edge(tempPortalNode, node, doneEvent);
-            EdgeToBorderNode.path = EdgeToTempPortalNode.path.ReverseNativeList();
-            tempPortalNode.edges.Add(EdgeToBorderNode);
-
-            // ThreadPool.QueueUserWorkItem(tempEdge.BuildPath, new object[] { node.midGrid, grid, grids });
-            // doneEvent.WaitOne();
+            jobHandles.Add(jobHandle);
+            edges.Add(EdgeToTempPortalNode);
 
 
         }
+        JobHandle.CompleteAll(jobHandles);
+        a.End();
+        jobHandles.Dispose();
+        b.Begin();
+        foreach (var edge in edges)
+        {
+
+            // var EdgeToBorderNode = new Edge(edge.endNode, edge.fromNode);
+
+            var EdgeToBorderNode = AllocatePool.PullItem<Edge>();
+            EdgeToBorderNode.Init(edge.endNode, edge.fromNode);
+
+
+            EdgeToBorderNode.path = edge.path.ReverseNativeList();
+            tempPortalNode.edges.Add(EdgeToBorderNode);
+        }
+        b.End();
+
         // WaitHandle.WaitAll(doneEventList.ToArray());
         return tempPortalNode;
 

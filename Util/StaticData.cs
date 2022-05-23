@@ -70,14 +70,14 @@ public static class StaticData
     public static List<T> GetSlice<T>(this NativeArray<T> array, int2 from, int2 end, int2 dir) where T : struct
     {
         var temp = new List<T>();
-        int a = 0;
+ 
         for (; !from.MyEquals(end); from += dir)
         {
 
             temp.Add(array.GetItem(from, ClusterWidth));
         }
         temp.Add(array.GetItem(end, ClusterWidth));
-        a = 0;
+  
         return temp;
     }
     /// <summary>

@@ -120,6 +120,7 @@ public partial class Tes : SystemBase
     CustomSampler sampler;
     List<Testclass> ts = new List<Testclass>();
     ClassHeap<Testclass> classHeap = new ClassHeap<Testclass>();
+    NativeList<int> teee = new NativeList<int>(Allocator.TempJob);
 
 
 
@@ -145,10 +146,7 @@ public partial class Tes : SystemBase
 
         if (Input.GetKeyDown(KeyCode.F1))
         {
-            int rn = UnityEngine.Random.Range(1, 100);
-            Debug.Log(rn);
-            classHeap.Push(new Testclass(rn,rn), rn);
-
+            new testJob { temp = teee }.Schedule().Complete();
 
 
 
@@ -156,8 +154,12 @@ public partial class Tes : SystemBase
         if (Input.GetKeyDown(KeyCode.F2))
         {
 
-            classHeap.Display();
-
+            var s = string.Empty;
+            for (int i = 0; i < teee.Length;i++){
+                s += teee[i].ToString();
+                s += " ";
+            }
+            Debug.Log(s);
         }
         if (Input.GetKeyDown(KeyCode.F3))
         {
@@ -169,6 +171,7 @@ public partial class Tes : SystemBase
     public struct testJob : IJob, IEquatable<testJob>
     {
         public int a;
+        public NativeList<int> temp;
         public int b;
 
         public override int GetHashCode()
@@ -185,14 +188,7 @@ public partial class Tes : SystemBase
 
         public void Execute()
         {
-            var aa = new List<int>();
-            aa.Add(1);
-            Debug.Log(aa.Count());
-            for (int i = 0; i < 9999999; i++)
-            {
-                float a = math.log2(math.exp2(i));
-            }
-
+            temp.Add(2);
 
         }
 

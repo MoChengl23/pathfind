@@ -1,6 +1,6 @@
 using System.Threading;
 using System.Reflection.Emit;
-using System.ComponentModel;
+
 using System.Runtime.InteropServices;
 using System.Collections.Specialized;
 using System.Collections;
@@ -8,9 +8,12 @@ using System.Collections.Generic;
 using Unity.Collections;
 using UnityEngine;
 using Unity.Entities;
+using Unity.Burst;
 using Unity.Mathematics;
 using System;
 using Object = System.Object;
+using Unity.Jobs;
+
 public struct EdgeTemp : IEquatable<EdgeTemp>
 {
     public int2 fromPos;
@@ -50,7 +53,7 @@ public class Edge : IEquatable<Edge>
 
     public NativeList<int2> path;
     public ManualResetEvent doneEvent;
-    public static int ClusterWidth = StaticData.ClusterWidth;
+    // public static int StaticData.ClusterWidth = StaticData.ClusterWidth;
 
     public bool done;
 
@@ -91,130 +94,168 @@ public class Edge : IEquatable<Edge>
 
     }
 
-    
-    
-    
+
+
+
     /// <summary>
     /// for connect temp PortalNode to cluster borderNode
     /// </summary>
     /// <param name="from"></param>
     /// <param name="end"></param>
-    public Edge(PortalNode from, PortalNode end){
+    public Edge(PortalNode from, PortalNode end)
+    {
         this.fromNode = from;
         this.endNode = end;
     }
-    
-    
+
+
     public override int GetHashCode()
     {
         return from.clusterIndexFlatten() * StaticData.HowManyGridsInACluster + end.clusterIndexFlatten();
 
     }
-    public void BuildPath(Object o)
+    // public void BuildPath(Object o)
+    // {
+    //     object[] os = o as object[];
+
+    //     Grid fromGrid = (Grid)os[0];
+    //     Grid endGrid = (Grid)os[1];
+    //     NativeArray<Grid> grids = (NativeArray<Grid>)os[2];
+
+    //     NativeArray<Grid> tempGrids = new NativeArray<Grid>(grids, Allocator.Temp);
+
+    //     path = FindPath(tempGrids, fromGrid, endGrid);
+
+    //     doneEvent.Set();
+
+    // }
+    public  JobHandle  BuildPath(Grid fromGrid, Grid endGrid, NativeArray<Grid> grids)
     {
-        object[] os = o as object[];
 
-        Grid fromGrid = (Grid)os[0];
-        Grid endGrid = (Grid)os[1];
-        NativeArray<Grid> grids = (NativeArray<Grid>)os[2];
 
-        NativeArray<Grid> tempGrids = new NativeArray<Grid>(grids, Allocator.Persistent);
-     
-        path = FindPath(tempGrids, fromGrid, endGrid);
+        path = new NativeList<int2>(Allocator.TempJob);
 
-        doneEvent.Set();
+
+        JobHandle jobHandle = new FindPathJob
+        {
+            fromGrid = fromGrid,
+            endGrid = endGrid,
+            grids = grids,
+            path = path
+        }.Schedule();
+
+        return jobHandle;
 
     }
-    private NativeList<int2> FindPath(NativeArray<Grid> tempGrids, Grid from, Grid end)
+    [BurstCompile]
+    struct FindPathJob : IJob
     {
+        public Grid fromGrid;
+        public Grid endGrid;
+        public NativeList<int2> path;
 
-        var start = from;
-        Heap<Grid> heap = new Heap<Grid>(StaticData.ClusterWidth * StaticData.ClusterWidth);
-        start.gcost = 1;
-        start.hcost = CalculateDistanceCost(start.worldPos, end.worldPos);
-        start.fcost = start.hcost + 1;
-        heap.Push(start);
-
-        NativeHashSet<int2> visited = new NativeHashSet<int2>(StaticData.ClusterWidth * StaticData.ClusterWidth, Allocator.Persistent);
-        visited.Add(from.worldPos);
-        while (!heap.IsEmpty)
+        [ReadOnly]
+        public NativeArray<Grid> grids;
+        public void Execute()
         {
-            var front = heap.Pop();
-   
+            NativeArray<Grid> tempGrids = new NativeArray<Grid>(grids, Allocator.Temp);
+            path = FindPath(tempGrids);
 
-            if (front.Equals(end))
-                break;
-            visited.Add(front.worldPos);
-            // NativeList<int2> neighbors = new NativeList<int2>(Allocator.Temp);
-            NativeList<Grid> neighbors = tempGrids.GetNeighbors(front.localPos, StaticData.ClusterWidth);
-            int a = 1;
-            for (int i = 0; i < neighbors.Length; i++)
+
+
+        }
+        private NativeList<int2> FindPath(NativeArray<Grid> tempGrids)
+        {
+
+            var start = fromGrid;
+            Heap<Grid> heap = new Heap<Grid>(StaticData.ClusterWidth * StaticData.ClusterWidth, true);
+            start.gcost = 1;
+            start.hcost = CalculateDistanceCost(start.worldPos, endGrid.worldPos);
+            start.fcost = start.hcost + 1;
+            heap.Push(start);
+
+            NativeHashSet<int2> visited = new NativeHashSet<int2>(StaticData.ClusterWidth * StaticData.ClusterWidth, Allocator.Temp);
+            visited.Add(fromGrid.worldPos);
+            while (!heap.IsEmpty)
             {
-                int2 neighborLocalPos = neighbors[i].localPos;
-                int2 neighborWorldPos = neighbors[i].worldPos;
-                int aa = 2;
-                // var temp = tempGrids.GetItem(neighborIndex);
-                // var temp2 = visited.Contains(neighborIndex);
+                var front = heap.Pop();
 
-                if (visited.Contains(neighborWorldPos) || !tempGrids.GetItem(neighborLocalPos, ClusterWidth).isWalkable)
-                    continue;
 
-                var neighborGrid = tempGrids.GetItem(neighborLocalPos, ClusterWidth);
-
-                int tempGCost = front.gcost + CalculateDistanceCost(front.worldPos, neighborWorldPos);
-                if (tempGCost < neighborGrid.gcost)
+                if (front.Equals(endGrid))
+                    break;
+                visited.Add(front.worldPos);
+                // NativeList<int2> neighbors = new NativeList<int2>(Allocator.Temp);
+                NativeList<Grid> neighbors = tempGrids.GetNeighbors(front.localPos, StaticData.ClusterWidth, true);
+                int a = 1;
+                for (int i = 0; i < neighbors.Length; i++)
                 {
-                    neighborGrid.camefrom = front.localPos;
-                    neighborGrid.gcost = tempGCost;
-                    neighborGrid.hcost = CalculateDistanceCost(neighborWorldPos, end.worldPos);
-                    neighborGrid.fcost = neighborGrid.gcost + neighborGrid.hcost;
+                    int2 neighborLocalPos = neighbors[i].localPos;
+                    int2 neighborWorldPos = neighbors[i].worldPos;
+                    int aa = 2;
+                    // var temp = tempGrids.GetItem(neighborIndex);
+                    // var temp2 = visited.Contains(neighborIndex);
 
-                    tempGrids.SetItem(neighborLocalPos, neighborGrid);
-                    if (!heap.Contains(neighborGrid))
+                    if (visited.Contains(neighborWorldPos) || !tempGrids.GetItem(neighborLocalPos, StaticData.ClusterWidth).isWalkable)
+                        continue;
+
+                    var neighborGrid = tempGrids.GetItem(neighborLocalPos, StaticData.ClusterWidth);
+
+                    int tempGCost = front.gcost + CalculateDistanceCost(front.worldPos, neighborWorldPos);
+                    if (tempGCost < neighborGrid.gcost)
                     {
-                        heap.Push(neighborGrid);
+                        neighborGrid.camefrom = front.localPos;
+                        neighborGrid.gcost = tempGCost;
+                        neighborGrid.hcost = CalculateDistanceCost(neighborWorldPos, endGrid.worldPos);
+                        neighborGrid.fcost = neighborGrid.gcost + neighborGrid.hcost;
+
+                        tempGrids.SetItem(neighborLocalPos, neighborGrid);
+                        if (!heap.Contains(neighborGrid))
+                        {
+                            heap.Push(neighborGrid);
+                        }
                     }
+
                 }
+                neighbors.Dispose();
 
             }
-            neighbors.Dispose();
+            visited.Dispose();
+            heap.Release();
+            var res = GetPath(tempGrids, fromGrid, endGrid);
+
+
+
+            return res;
+
 
         }
-        visited.Dispose();
-        heap.Release();
-        var res = GetPath(tempGrids, from, end);
 
-
-
-        return res;
-
-
-    }
-
-    private NativeList<int2> GetPath(NativeArray<Grid> tempGrids, Grid from, Grid end)
-    {
-        NativeList<int2> path = new NativeList<int2>(Allocator.Persistent);
-        var cur = tempGrids.GetItem(end.localPos, ClusterWidth);
-
-        while (cur.camefrom.x != -1)
+        private NativeList<int2> GetPath(NativeArray<Grid> tempGrids, Grid from, Grid end)
         {
-            path.Add(cur.worldPos);
-            cur = tempGrids.GetItem(cur.camefrom, ClusterWidth);
+            // NativeList<int2> path = new NativeList<int2>(Allocator.Temp);
+            var cur = tempGrids.GetItem(end.localPos, StaticData.ClusterWidth);
+
+            while (cur.camefrom.x != -1)
+            {
+                path.Add(cur.worldPos);
+                cur = tempGrids.GetItem(cur.camefrom, StaticData.ClusterWidth);
+            }
+            return path;
         }
-        return path;
+
+        private int CalculateDistanceCost(int2 aPosition, int2 bPosition)
+        {
+            int xDistance = math.abs(aPosition.x - bPosition.x);
+            int yDistance = math.abs(aPosition.y - bPosition.y);
+            int remaining = math.abs(xDistance - yDistance);
+            // return xDistance + yDistance;
+
+            return 14 * math.min(xDistance, yDistance) + 10 * remaining;
+
+        }
+
+
     }
-
-    private int CalculateDistanceCost(int2 aPosition, int2 bPosition)
-    {
-        int xDistance = math.abs(aPosition.x - bPosition.x);
-        int yDistance = math.abs(aPosition.y - bPosition.y);
-        int remaining = math.abs(xDistance - yDistance);
-        // return xDistance + yDistance;
-
-        return 14 * math.min(xDistance, yDistance) + 10 * remaining;
-
-    }
-
     public bool Equals(Edge other)
     {
         return (fromNode == other.fromNode && endNode == other.endNode)

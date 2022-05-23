@@ -266,8 +266,10 @@ public class Cluster
                 calculatePath.Add(doneEvent);
                 var edgeFrom2End = new Edge(from, end, doneEvent);
 
+                var  jobHandle  = edgeFrom2End.BuildPath(from.midGrid, end.midGrid, grids);
+                jobHandle.Complete();
 
-                edgeFrom2End.BuildPath(new object[] { from.midGrid, end.midGrid, grids });
+                // edgeFrom2End.BuildPath(new object[] { from.midGrid, end.midGrid, grids });
 
 
                 from.edges.Add(edgeFrom2End);
@@ -307,7 +309,9 @@ public class Cluster
             doneEventList.Add(doneEvent);
             var EdgeToTempPortalNode = new Edge(node, tempPortalNode, doneEvent);
             node.edges.Add(EdgeToTempPortalNode);
-            EdgeToTempPortalNode.BuildPath(new object[] { node.midGrid, grid, grids });
+            var jobHandle = EdgeToTempPortalNode.BuildPath(node.midGrid, grid, grids);
+            // EdgeToTempPortalNode.BuildPath(new object[] { node.midGrid, grid, grids });
+            jobHandle.Complete();
 
 
             var EdgeToBorderNode = new Edge(tempPortalNode, node, doneEvent);

@@ -38,10 +38,20 @@ public struct Heap<T> where T : unmanaged, IComparable<T>, IEquatable<T>
 
     [NativeDisableContainerSafetyRestriction]
     public NativeHashSet<T> heapset;
-    public Heap(int capcity)
+ 
+    public Heap(int capcity, bool inJob = false)
     {
-        this.heaptree = new NativeList<T>(Allocator.Persistent);
-        this.heapset = new NativeHashSet<T>(capcity, Allocator.Persistent);
+        if (inJob)
+        {
+            this.heaptree = new NativeList<T>(Allocator.Temp);
+            this.heapset = new NativeHashSet<T>(capcity, Allocator.Temp);
+        }
+        else
+        {
+            this.heaptree = new NativeList<T>(Allocator.Persistent);
+            this.heapset = new NativeHashSet<T>(capcity, Allocator.Persistent);
+        }
+
     }
 
     public bool IsEmpty

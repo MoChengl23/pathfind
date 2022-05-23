@@ -107,10 +107,20 @@ public static class StaticData
     }
 
 
-    public static NativeList<T> GetNeighbors<T>(this NativeArray<T> array, int2 pos, int range) where T : unmanaged
+    public static NativeList<T> GetNeighbors<T>(this NativeArray<T> array, int2 pos, int range, bool inJob = false) where T : unmanaged
     {
         var index = Index8;
-        var neighbors = new NativeList<T>(Allocator.Persistent);
+
+        NativeList<T> neighbors;
+        if (inJob)
+        {
+            neighbors = new NativeList<T>(Allocator.Temp);
+        }
+        else
+        {
+            neighbors = new NativeList<T>(Allocator.Persistent);
+        }
+
         for (int i = 0; i < 3; i++)
         {
             for (int j = 0; j < 3; j++)

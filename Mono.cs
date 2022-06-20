@@ -45,11 +45,12 @@ public class Mono : MonoBehaviour
 
 
             }
+            NativeAllocatePool<int2>.Init();
+            AllocatePool<Edge>.Init();
         }
         if (Input.GetKeyDown(KeyCode.Space))
         {
-            NativeAllocatePool<int2>.Init();
-            AllocatePool<Edge>.Init();
+            
             Profiler.BeginSample("mytime");
             PathFindUtil.FindPath(new int2(4,3), new int2(55,33));
             Profiler.EndSample();

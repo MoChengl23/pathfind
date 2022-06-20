@@ -34,22 +34,26 @@ public static class NativeAllocatePool<T> where T : unmanaged
 
     public static NativeList<T> PullNativeList(Allocator allocator)
     {
-        NativeList<T> res = default(NativeList<T>);
+       
         switch (allocator)
         {
 
             case Allocator.TempJob:
-                tempJobPool.TryTake(out res);
+                if(tempJobPool.TryTake(out  NativeList<T> res)){
+                    return res;
+                }
                 break;
             case Allocator.Persistent:
-                permanentPool.TryTake(out res);
+                if(permanentPool.TryTake(out NativeList<T> res1)){
+                    return res1;
+                }
                 break;
+            default:
+                return new NativeList<T>(allocator);
+
         }
-        if (!res.IsCreated)
-        {
-            res = new NativeList<T>(allocator);
-        }
-        return res;
+        return default(NativeList<T>);
+
     }
     public static void Init()
     {
@@ -88,11 +92,11 @@ public static class NativeAllocatePool<T> where T : unmanaged
 
 public static class AllocatePool
 {
-    public static T PullItem<T>()where T: new()
+    public static T PullItem<T>() where T : new()
     {
         return AllocatePool<T>.PullItem();
     }
-    public static void GiveBackToPool<T>(T item) where T :new()
+    public static void GiveBackToPool<T>(T item) where T : new()
     {
         AllocatePool<T>.GiveBackToPool(item);
     }
@@ -115,13 +119,16 @@ public static class AllocatePool<T> where T : new()
         return res;
 
     }
-    public static void Init(){
-        for (int i = 0; i < 100;i++){
+    public static void Init()
+    {
+        for (int i = 0; i < 100; i++)
+        {
             pool.Add(new T());
         }
     }
 
-    public static void GiveBackToPool(T item){
+    public static void GiveBackToPool(T item)
+    {
         pool.Add(item);
     }
 }

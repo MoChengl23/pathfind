@@ -156,6 +156,7 @@ public class Cluster
     }
     private void DeleteEdge()
     {
+        //delete border edge FIrst
         foreach (var node in portalNodes)
         {
             foreach (var edge in node.edges)
@@ -167,6 +168,10 @@ public class Cluster
             }
 
         }
+
+        //delete internal edge
+
+
     }
     public void GeneratePortalNode()
     {
